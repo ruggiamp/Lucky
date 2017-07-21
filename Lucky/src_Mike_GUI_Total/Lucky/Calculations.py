@@ -155,11 +155,14 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
         self.twoColData = self.twoColour(self.dataSet[0], self.dataSet[2], self.intConf[2])
         self.twoColDataLim = self.twoColData[self.intConf[0]:self.intConf[1]] #twoColData limited between the integration boundaries
         #modifica
-       
+        
+        print "ecco i due colori"
+        print self.twoColDataLim
+        
         self.a = int(round(min(self.twoColDataLim)))
         self.b = int(round(max(self.twoColDataLim)))
         self.binning = range(self.a, self.b, 30)
-        #self.twoColHistFreq, self.twoColHistValues = np.histogram(self.twoColDataLim, bins=np.log(len(self.twoColDataLim))/np.log(2)+4], density=False)
+        
         self.twoColHistFreq, self.twoColHistValues = np.histogram(self.twoColDataLim, bins= self.binning, density=False)
         
         #old
@@ -174,12 +177,23 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
     def fitPlanck(self):
         #Do some fitting for Planck...
         ###
-        self.planckFit, planckCov = curve_fit(self.planck, self.wlIntegLim, self.normIntegLim, [1,2000])
-        self.planckTemp = self.planckFit[1]
-        self.planckEmiss = self.planckFit[0]
-        #Planck with fit params(??)
-        self.planckFitData = self.planck(self.wlIntegLim, self.planckEmiss, self.planckTemp)
-        
+        self.fitOkPlanck = 1
+        try:
+            self.planckFit, planckCov = curve_fit(self.planck, self.wlIntegLim, self.normIntegLim, [1,2000])
+        except ValueError: 
+            print "Value Error Planck fit"
+            self.fitOkPlanck = 0
+        except RuntimeError: 
+            print "Runtime Error Planck fit"
+            self.fitOkPlanck = 0
+        if self.fitOkPlanck == 1: 
+            self.planckTemp = self.planckFit[1]
+            self.planckEmiss = self.planckFit[0]
+            #Planck with fit params(??)
+            self.planckFitData = self.planck(self.wlIntegLim, self.planckEmiss, self.planckTemp)
+        else:
+            self.planckTemp = 2000
+            
         #new method defined to operate a sliding average. usefull for the fit Histogram
     def moving_average(self, a, n=2) :
         self.ret = np.cumsum(a, dtype=float)
@@ -199,9 +213,22 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
         ###
         #print('averaged twocolhistvalues:')
         #print self.moving_average(self.twoColHistValues)
-        self.histFit, histCov = curve_fit(self.gaus, self.moving_average(self.twoColHistValues), self.twoColHistFreq, p0=[1000,self.planckTemp,100])
-        self.twoColTemp = self.histFit[1]
-        self.twoColErr = self.histFit[2]
+        
+        self.fitOkGauss = 1
+        try:
+            self.histFit, histCov = curve_fit(self.gaus, self.moving_average(self.twoColHistValues), self.twoColHistFreq, p0=[1000,self.planckTemp,100])
+        except ValueError:
+            print "Value Error Gauss fit"
+            self.fitOkGauss = 0
+        except RuntimeError:
+            print "Runtime Error Gauss fit"
+            self.fitOkGauss = 0
+        if self.fitOkGauss == 1:     
+            self.twoColTemp = self.histFit[1]
+            self.twoColErr = self.histFit[2]
+        else:
+            self.twoColTemp = np.mean(self.twoColDataLim)
+            self.twoColErr = np.std(self.twoColDataLim)
     
     #old
     #def fitHistogram(self):
@@ -341,10 +368,15 @@ class LuckyPlots(object):
          #        self.luckyCalcs.wlIntegLim, self.luckyCalcs.planckFitData, 'red')
         #self.ax2.set_xlim(*self.luckyCalcs.planckPlotRange)
              #Planck data subgraph
-        self.ax2.plot(self.luckyCalcs.dataSet[0], self.luckyCalcs.dataSet[2] / max(self.luckyCalcs.dataSet[2]), 
+        if self.luckyCalcs.fitOkPlanck == 1:
+            self.ax2.plot(self.luckyCalcs.dataSet[0], self.luckyCalcs.dataSet[2] / max(self.luckyCalcs.dataSet[2]), 
                  self.luckyCalcs.wlIntegLim, self.luckyCalcs.planckFitData / max(self.luckyCalcs.dataSet[2]), 'red')
-        self.ax2.set_xlim(*self.luckyCalcs.planckPlotRange)
-        self.ax2.set_ylim([0, 1])
+            self.ax2.set_xlim(*self.luckyCalcs.planckPlotRange)
+            self.ax2.set_ylim([0, 1])
+        else:
+            self.ax2.plot(self.luckyCalcs.dataSet[0], self.luckyCalcs.dataSet[2] / max(self.luckyCalcs.dataSet[2]))
+            self.ax2.set_xlim(*self.luckyCalcs.planckPlotRange)
+            self.ax2.set_ylim([0, 1])
       
         #Wien data subgraph
         self.ax3.plot(self.luckyCalcs.invWL, self.luckyCalcs.wienData,
@@ -365,7 +397,8 @@ class LuckyPlots(object):
         #         self.luckyCalcs.twoColHistValues, self.luckyCalcs.gaus(self.luckyCalcs.twoColHistValues, *self.luckyCalcs.histFit), 'red')
         #modifica
         self.ax5.hist(self.luckyCalcs.twoColDataLim, self.luckyCalcs.binning)
-        self.ax5.plot(self.luckyCalcs.twoColHistValues, self.luckyCalcs.gaus(self.luckyCalcs.twoColHistValues, *self.luckyCalcs.histFit), 'red')
+        if self.luckyCalcs.fitOkGauss == 1:
+            self.ax5.plot(self.luckyCalcs.twoColHistValues, self.luckyCalcs.gaus(self.luckyCalcs.twoColHistValues, *self.luckyCalcs.histFit), 'red')
         
         #
         self.ax5.set_xlim([self.luckyCalcs.twoColTemp - 400, self.luckyCalcs.twoColTemp + 400])
@@ -381,9 +414,19 @@ class LuckyPlots(object):
           #                       ("T"+r"$_{Two Colour}$","{0:10.2f}".format(self.luckyCalcs.twoColTemp))]) 
     
      #Create text label for calculated T values -modified-
-        textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9d}".format(int(self.luckyCalcs.planckTemp))),
-                                 ("T"+r"$_{Wien}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.wienTemp))),
-                                 ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
+        if self.luckyCalcs.fitOkPlanck == 1:
+            textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9d}".format(int(self.luckyCalcs.planckTemp))),
+                                     ("T"+r"$_{Wien}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.wienTemp))),
+                                     ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
+        else: 
+           textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9s}".format("ERROR")),
+                                    ("T"+r"$_{Wien}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.wienTemp))),
+                                    ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
+    
+    
+        #textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9d}".format(int(self.luckyCalcs.planckTemp))),
+         #                            ("T"+r"$_{Wien}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.wienTemp))),
+          #                           ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
     
         self.errWienPlanck = (abs(self.luckyCalcs.planckTemp - self.luckyCalcs.wienTemp)/ (self.luckyCalcs.planckTemp))*100 
         self.std2col = self.luckyCalcs.twoColErr
@@ -397,10 +440,12 @@ class LuckyPlots(object):
 #                      "T"+r"$_{Two Colour}$":"{0:10.2f}".format(self.luckyCalcs.twoColTemp)}
         labelPosition = (0.54, 0.85)
         rowNr = 0
+        
         for label,tVal in textLabel.iteritems( ):
             plt.figtext(labelPosition[0], labelPosition[1]-(0.05*rowNr), label, fontdict = None, size = 'large')
             plt.figtext(labelPosition[0]+0.080, labelPosition[1]-(0.05*rowNr), tVal, fontdict = None, size = 'large')
             rowNr += 1
+        
         
         labelPosition1 = (0.78, 0.85)
         rowNr = 0
