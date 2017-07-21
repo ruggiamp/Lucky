@@ -154,10 +154,11 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
         self.wienDataIntegLim = self.wienData[self.intConf[0]:self.intConf[1]]
         self.twoColData = self.twoColour(self.dataSet[0], self.dataSet[2], self.intConf[2])
         self.twoColDataLim = self.twoColData[self.intConf[0]:self.intConf[1]] #twoColData limited between the integration boundaries
-        #modifica
+        self.wavelengthredLim = self.wavelengthred[self.intConf[0]:self.intConf[1]]
+       
         
-        print "ecco i due colori"
-        print self.twoColDataLim
+        #print "ecco i due colori"
+        #print self.twoColDataLim
         
         self.a = int(round(min(self.twoColDataLim)))
         self.b = int(round(max(self.twoColDataLim)))
@@ -276,9 +277,10 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
             i2 = np.log(intens[i+delta]/2/pi/h/c**2/f2**5)*k/h/c #twoColCalc(wavelength[i + delta], intens[i+delta])
             twoCol.append(abs((f2 - f1) / (i2 - i1)))
         
-        for i in range(nWindows, nPoints):
-            twoCol.append(float('nan'))
-            
+        #for i in range(nWindows, nPoints):
+        #    twoCol.append(float('nan'))
+        self.wavelengthred = wavelength[0:nPoints - delta]  
+        
         return twoCol
     
     #Gaussian for fit
@@ -382,10 +384,17 @@ class LuckyPlots(object):
         self.ax3.plot(self.luckyCalcs.invWL, self.luckyCalcs.wienData,
                  self.luckyCalcs.invWLIntegLim, self.luckyCalcs.fWien(self.luckyCalcs.invWLIntegLim,*self.luckyCalcs.wienFit), 'red')
         self.ax3.set_xlim(*self.luckyCalcs.wienPlotRange)
+        
         #Two Colour data subgraph
-        self.ax4.plot(self.luckyCalcs.dataSet[0], self.luckyCalcs.twoColData, 'b:', 
-                 self.luckyCalcs.wlIntegLim, self.luckyCalcs.twoColDataLim, 'r:')
+        self.ax4.plot(self.luckyCalcs.wavelengthred, self.luckyCalcs.twoColData, 'b:', 
+                 self.luckyCalcs.wavelengthredLim, self.luckyCalcs.twoColDataLim, 'r:')
         self.ax4.set_xlim(*self.luckyCalcs.planckPlotRange)
+        
+        
+        #Two Colour data subgraph-OLD-
+        #self.ax4.plot(self.luckyCalcs.dataSet[0], self.luckyCalcs.twoColData, 'b:', 
+        #         self.luckyCalcs.wlIntegLim, self.luckyCalcs.twoColDataLim, 'r:')
+        #self.ax4.set_xlim(*self.luckyCalcs.planckPlotRange)
         #self.ax4.set_ylim([np.amin(calcs.TwoColDataLim),np.amax(calcs.TwoColDataLim)])
         #self.ax4.set_ylim(*calcs.twoColDataLim)
         #nuova modifica
