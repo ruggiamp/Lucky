@@ -33,8 +33,8 @@ class CalculationService(object):
         self.updateResults()
         
         #Create plot objects once we've got some data to plot
-        self.dsPlots = LuckyPlots(self.dsCalcs)
-        self.usPlots = LuckyPlots(self.usCalcs)
+        self.dsPlots = LuckyPlots(self.dsCalcs, 'DS')
+        self.usPlots = LuckyPlots(self.usCalcs, 'US')
     
     def updateCalcs(self):
         #Perhaps add updateModel call?
@@ -292,7 +292,7 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
 
 import matplotlib.pyplot as plt
 class LuckyPlots(object):
-    def __init__(self, calcs, debug=False):
+    def __init__(self, calcs, US_DS, debug=False):
         if debug:
             return
         self.debug = debug
@@ -354,6 +354,11 @@ class LuckyPlots(object):
             #Draw the plots if we're not debugging
             plt.ion()
             plt.show()
+            mngr = plt.get_current_fig_manager()
+            if US_DS == 'US':
+                mngr.window.setGeometry(20,280,700, 700)
+            if US_DS == 'DS':
+                mngr.window.setGeometry(1000,280,700, 700)
             #Needed to make plt appear!
             #   http://stackoverflow.com/questions/28269157/plotting-in-a-non-blocking-way-with-matplotlib
             plt.pause(0.001)
