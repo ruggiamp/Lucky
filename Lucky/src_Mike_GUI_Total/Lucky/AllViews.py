@@ -101,9 +101,9 @@ class MainView(QWidget, AllViews):
         fileGrpBox = QGroupBox("Spectrum data files (US/DS) :")
         self.prevUSDSPairBtn = QPushButton("<")
         self.prevUSDSPairBtn.setFixedWidth(40)
-        self.prevUSDSPairBtn.clicked.connect(self.changeUSDSPairBtnClick)
+        self.prevUSDSPairBtn.clicked.connect(self.changeUSDSPairBtnClickAndStop)
         self.nextUSDSPairBtn = QPushButton(">")
-        self.nextUSDSPairBtn.clicked.connect(self.changeUSDSPairBtnClick)
+        self.nextUSDSPairBtn.clicked.connect(self.changeUSDSPairBtnClickAndStop)
         self.nextUSDSPairBtn.setFixedWidth(40)
         self.usdsPairTextBoxes = []
         for i in range(2):
@@ -217,7 +217,12 @@ class MainView(QWidget, AllViews):
         baseLayout.addLayout(buttonLayout)
         self.setLayout(baseLayout)
 
-###        
+###   
+
+    def changeUSDSPairBtnClickAndStop(self):
+        self.stopBtnClicked()
+        self.changeUSDSPairBtnClick()
+        
     def addWidgetListToLayout(self, widgetList, layout):
         for i in range(len(widgetList)):
             layout.addWidget(widgetList[i])
