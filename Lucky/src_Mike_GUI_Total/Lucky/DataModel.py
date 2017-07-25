@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 class MainData(object):
     def __init__(self, mode=(0,1), calibType=(1,0,0), dataDir=os.path.expanduser("~"),
-                 usdsPair=['',''], integStart=500, integEnd=900, integDelta=200):
+                 usdsPair=['T_01.txt','T_02.txt'], integStart=500, integEnd=900, integDelta=200):
         #These relate to the calculations
         self.mode = mode
         self.calibType = calibType
