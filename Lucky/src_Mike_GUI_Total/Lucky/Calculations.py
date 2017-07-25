@@ -205,9 +205,26 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
     def fitWien(self):
         #Do some fitting for Wien...
         ###
-        self.wienFit, wienCov = curve_fit(self.fWien, self.invWLIntegLim[(np.isfinite(self.wienDataIntegLim))], self.wienDataIntegLim[(np.isfinite(self.wienDataIntegLim))], p0=[1, self.planckTemp])
-        self.wienResidual = self.wienDataIntegLim - self.fWien(self.invWLIntegLim[(np.isfinite(self.wienDataIntegLim))], *self.wienFit)
-        self.wienTemp = self.wienFit[1]
+        self.fitOkWien = 1
+        if self.fitOkPlanck == 1:
+            try:
+                self.wienFit, wienCov = curve_fit(self.fWien, self.invWLIntegLim[(np.isfinite(self.wienDataIntegLim))], self.wienDataIntegLim[(np.isfinite(self.wienDataIntegLim))], p0=[1, self.planckTemp])
+                self.wienResidual = self.wienDataIntegLim - self.fWien(self.invWLIntegLim[(np.isfinite(self.wienDataIntegLim))], *self.wienFit)
+               
+            except ValueError: 
+                print "Value Error Wien fit"
+                self.fitOkWien = 0
+            except RuntimeError: 
+                print "Runtime Error Wien fit"
+                self.fitOkWien = 0
+            if self.fitOkWien == 1:
+                 self.wienTemp = self.wienFit[1]
+            else:
+                 self.wienTemp = 2000
+                
+        else:
+            self.wienTemp = 2000
+            
         
     def fitHistogram(self):
         #Gaussian fit of two colour histogram
@@ -216,20 +233,25 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
         #print self.moving_average(self.twoColHistValues)
         
         self.fitOkGauss = 1
-        try:
-            self.histFit, histCov = curve_fit(self.gaus, self.moving_average(self.twoColHistValues), self.twoColHistFreq, p0=[1000,self.planckTemp,100])
-        except ValueError:
-            print "Value Error Gauss fit"
-            self.fitOkGauss = 0
-        except RuntimeError:
-            print "Runtime Error Gauss fit"
-            self.fitOkGauss = 0
-        if self.fitOkGauss == 1:     
-            self.twoColTemp = self.histFit[1]
-            self.twoColErr = self.histFit[2]
+        if self.fitOkPlanck == 1:
+            try:
+                self.histFit, histCov = curve_fit(self.gaus, self.moving_average(self.twoColHistValues), self.twoColHistFreq, p0=[1000,self.planckTemp,100])
+            except ValueError:
+                print "Value Error Gauss fit"
+                self.fitOkGauss = 0
+            except RuntimeError:
+                print "Runtime Error Gauss fit"
+                self.fitOkGauss = 0
+            if self.fitOkGauss == 1:     
+                self.twoColTemp = self.histFit[1]
+                self.twoColErr = self.histFit[2]
+            else:
+                self.twoColTemp = np.mean(self.twoColDataLim)
+                self.twoColErr = np.std(self.twoColDataLim)
         else:
             self.twoColTemp = np.mean(self.twoColDataLim)
             self.twoColErr = np.std(self.twoColDataLim)
+            
     
     #old
     #def fitHistogram(self):
@@ -386,9 +408,15 @@ class LuckyPlots(object):
             self.ax2.set_ylim([0, 1])
       
         #Wien data subgraph
-        self.ax3.plot(self.luckyCalcs.invWL, self.luckyCalcs.wienData,
-                 self.luckyCalcs.invWLIntegLim, self.luckyCalcs.fWien(self.luckyCalcs.invWLIntegLim,*self.luckyCalcs.wienFit), 'red')
-        self.ax3.set_xlim(*self.luckyCalcs.wienPlotRange)
+        
+        if self.luckyCalcs.fitOkWien == 1 and self.luckyCalcs.fitOkPlanck == 1:
+            self.ax3.plot(self.luckyCalcs.invWL, self.luckyCalcs.wienData,
+                     self.luckyCalcs.invWLIntegLim, self.luckyCalcs.fWien(self.luckyCalcs.invWLIntegLim,*self.luckyCalcs.wienFit), 'red')
+            self.ax3.set_xlim(*self.luckyCalcs.wienPlotRange)
+        else:
+            self.ax3.plot(self.luckyCalcs.invWL, self.luckyCalcs.wienData)
+            self.ax3.set_xlim(*self.luckyCalcs.wienPlotRange)
+        
         
         #Two Colour data subgraph
         self.ax4.plot(self.luckyCalcs.wavelengthred, self.luckyCalcs.twoColData, 'b:', 
@@ -411,15 +439,17 @@ class LuckyPlots(object):
         #         self.luckyCalcs.twoColHistValues, self.luckyCalcs.gaus(self.luckyCalcs.twoColHistValues, *self.luckyCalcs.histFit), 'red')
         #modifica
         self.ax5.hist(self.luckyCalcs.twoColDataLim, self.luckyCalcs.binning)
-        if self.luckyCalcs.fitOkGauss == 1:
+        if self.luckyCalcs.fitOkGauss == 1 and self.luckyCalcs.fitOkPlanck == 1:
             self.ax5.plot(self.luckyCalcs.twoColHistValues, self.luckyCalcs.gaus(self.luckyCalcs.twoColHistValues, *self.luckyCalcs.histFit), 'red')
         
         #
         self.ax5.set_xlim([self.luckyCalcs.twoColTemp - 400, self.luckyCalcs.twoColTemp + 400])
         #self.ax5.set_xlim(1800,4000)
+        
         #Residual subgraph of the Wien
-        ordin = len(self.luckyCalcs.invWL)*[0]
-        self.ax6.plot(self.luckyCalcs.invWLIntegLim, self.luckyCalcs.wienResidual,'green',self.luckyCalcs.invWL,ordin,'black')
+        if self.luckyCalcs.fitOkPlanck == 1 and self.luckyCalcs.fitOkWien == 1:
+            ordin = len(self.luckyCalcs.invWL)*[0]
+            self.ax6.plot(self.luckyCalcs.invWLIntegLim, self.luckyCalcs.wienResidual,'green',self.luckyCalcs.invWL,ordin,'black')
        
         
         #Create text label for calculated T values  -OLD-
@@ -428,15 +458,19 @@ class LuckyPlots(object):
           #                       ("T"+r"$_{Two Colour}$","{0:10.2f}".format(self.luckyCalcs.twoColTemp))]) 
     
      #Create text label for calculated T values -modified-
-        if self.luckyCalcs.fitOkPlanck == 1:
+        if self.luckyCalcs.fitOkPlanck == 1 and self.luckyCalcs.fitOkWien == 1:
             textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9d}".format(int(self.luckyCalcs.planckTemp))),
                                      ("T"+r"$_{Wien}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.wienTemp))),
                                      ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
         else: 
-           textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9s}".format("ERROR")),
-                                    ("T"+r"$_{Wien}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.wienTemp))),
-                                    ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
-    
+           if self.luckyCalcs.fitOkPlanck == 0: 
+               textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9s}".format("ERROR")),
+                                        ("T"+r"$_{Wien}$"+ "[K]","{0:9s}".format("ERROR")),
+                                        ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
+           if self.luckyCalcs.fitOkWien == 0: 
+               textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9d}".format(int(self.luckyCalcs.planckTemp))),
+                                        ("T"+r"$_{Wien}$"+ "[K]","{0:9s}".format("ERROR")),
+                                        ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
     
         #textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9d}".format(int(self.luckyCalcs.planckTemp))),
          #                            ("T"+r"$_{Wien}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.wienTemp))),
