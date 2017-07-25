@@ -222,6 +222,7 @@ class MainView(QWidget, AllViews):
     def changeUSDSPairBtnClickAndStop(self):
         self.stopBtnClicked()
         self.changeUSDSPairBtnClick()
+        self.runBtnClicked()
         
     def addWidgetListToLayout(self, widgetList, layout):
         for i in range(len(widgetList)):
