@@ -205,9 +205,13 @@ class LuckyCalculations(object): #TODO Make calcs use calcserv to get bulbTemp, 
     def fitWien(self):
         #Do some fitting for Wien...
         ###
-        self.wienFit, wienCov = curve_fit(self.fWien, self.invWLIntegLim[(np.isfinite(self.wienDataIntegLim))], self.wienDataIntegLim[(np.isfinite(self.wienDataIntegLim))], p0=[1, self.planckTemp])
-        self.wienResidual = self.wienDataIntegLim - self.fWien(self.invWLIntegLim[(np.isfinite(self.wienDataIntegLim))], *self.wienFit)
-        self.wienTemp = self.wienFit[1]
+        if self.fitOkPlanck == 1:
+            self.wienFit, wienCov = curve_fit(self.fWien, self.invWLIntegLim[(np.isfinite(self.wienDataIntegLim))], self.wienDataIntegLim[(np.isfinite(self.wienDataIntegLim))], p0=[1, self.planckTemp])
+            self.wienResidual = self.wienDataIntegLim - self.fWien(self.invWLIntegLim[(np.isfinite(self.wienDataIntegLim))], *self.wienFit)
+            self.wienTemp = self.wienFit[1]
+        else:
+            self.wienTemp = 2000
+            
         
     def fitHistogram(self):
         #Gaussian fit of two colour histogram
@@ -381,9 +385,13 @@ class LuckyPlots(object):
             self.ax2.set_ylim([0, 1])
       
         #Wien data subgraph
-        self.ax3.plot(self.luckyCalcs.invWL, self.luckyCalcs.wienData,
-                 self.luckyCalcs.invWLIntegLim, self.luckyCalcs.fWien(self.luckyCalcs.invWLIntegLim,*self.luckyCalcs.wienFit), 'red')
-        self.ax3.set_xlim(*self.luckyCalcs.wienPlotRange)
+        if self.luckyCalcs.fitOkPlanck == 1:
+            self.ax3.plot(self.luckyCalcs.invWL, self.luckyCalcs.wienData,
+                     self.luckyCalcs.invWLIntegLim, self.luckyCalcs.fWien(self.luckyCalcs.invWLIntegLim,*self.luckyCalcs.wienFit), 'red')
+            self.ax3.set_xlim(*self.luckyCalcs.wienPlotRange)
+        else:
+            self.ax3.plot(self.luckyCalcs.invWL, self.luckyCalcs.wienData)
+            self.ax3.set_xlim(*self.luckyCalcs.wienPlotRange)
         
         #Two Colour data subgraph
         self.ax4.plot(self.luckyCalcs.wavelengthred, self.luckyCalcs.twoColData, 'b:', 
@@ -412,9 +420,11 @@ class LuckyPlots(object):
         #
         self.ax5.set_xlim([self.luckyCalcs.twoColTemp - 400, self.luckyCalcs.twoColTemp + 400])
         #self.ax5.set_xlim(1800,4000)
+        
         #Residual subgraph of the Wien
-        ordin = len(self.luckyCalcs.invWL)*[0]
-        self.ax6.plot(self.luckyCalcs.invWLIntegLim, self.luckyCalcs.wienResidual,'green',self.luckyCalcs.invWL,ordin,'black')
+        if self.luckyCalcs.fitOkPlanck == 1:
+            ordin = len(self.luckyCalcs.invWL)*[0]
+            self.ax6.plot(self.luckyCalcs.invWLIntegLim, self.luckyCalcs.wienResidual,'green',self.luckyCalcs.invWL,ordin,'black')
        
         
         #Create text label for calculated T values  -OLD-
@@ -429,7 +439,7 @@ class LuckyPlots(object):
                                      ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
         else: 
            textLabel = OrderedDict([("T"+r"$_{Planck}$" + "[K]","{0:9s}".format("ERROR")),
-                                    ("T"+r"$_{Wien}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.wienTemp))),
+                                    ("T"+r"$_{Wien}$"+ "[K]","{0:9s}".format("ERROR")),
                                     ("T"+r"$_{2col}$"+ "[K]","{0:9d}".format(int(self.luckyCalcs.twoColTemp)))]) 
     
     
